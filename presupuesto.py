@@ -26,14 +26,16 @@ fechas = [fecha_inicio + pd.DateOffset(months=i) for i in range(periodos)]
 st.sidebar.header("📅 Filtro de periodo a visualizar")
 opcion_periodo = st.sidebar.radio(
     "Selecciona periodo:",
-    ["Todo", "Año 2025", "Año 2026", "Próximo trimestre", "Próximo semestre", "Próximos 12 meses"]
+    ["Todo", "Año 2025", "Año 2026", "Próximo trimestre", "Próximo semestre", "Próximos 12 meses"],
+    index=5
 )
+
 
 # --- ORQUESTACIÓN ---
 st.sidebar.header("📦 Orquestación")
 
-precio_orquestacion = st.sidebar.number_input("💰 Precio por orquestación (USD/container)", value=5.0)
-crecimiento_anual = st.sidebar.slider("📈 Crecimiento anual basado en datos reales (%)", 20.0, 70.0, 12.0) / 100
+precio_orquestacion = st.sidebar.number_input("💰 Precio por orquestación (USD/container)", value=4.28)
+crecimiento_anual = st.sidebar.slider("📈 Crecimiento anual basado en datos reales (%)", 20.0, 70.0, 55.0) / 100
 
 # Datos reales mensuales: enero 2024 a junio 2025 (18 valores)
 containers_reales = [
@@ -83,15 +85,23 @@ df = pd.DataFrame({
 
 
 # --- FINANCIAMIENTO ---
-st.sidebar.header("💸 Financiamiento")
-precio_contenedor = st.sidebar.number_input("💰 Precio por contenedor (USD)", value=30000.0)
-metodo_fin = st.sidebar.radio("Método de financiamiento:", [
-    "% de carga con crecimiento", 
-    "Monto inicial + crecimiento", 
-    "Ingreso manual"
-])
+# --- Valores base predeterminados (jul-2025 a dic-2026) ---
+valores_base = [
+    500000, 500000, 1000000, 1500000, 4500000, 4500000, 4500000, 6500000,
+    8500000, 10500000, 12500000, 14500000, 16500000, 18000000,
+    20000000, 20000000, 20000000, 20000000
+]
+valores_base += [0.0] * (periodos - len(valores_base))  # Rellenar si hay más meses
 
-mes_inicio_fin = st.sidebar.slider("🕒 Mes inicio financiamiento", 0, periodos - 1, 2)
+# --- Parámetros financiamiento ---
+st.sidebar.header("💸 Financiamiento")
+metodo_fin = st.sidebar.selectbox("Método de cálculo", [
+    "% de carga con crecimiento",
+    "Monto inicial + crecimiento",
+    "Ingreso manual"
+], index=2)  # <- index 2 selecciona por defecto "Ingreso manual"
+
+mes_inicio_fin = st.sidebar.slider("🕒 Mes inicio financiamiento", 0, periodos - 1, 0)
 margen_fin = st.sidebar.slider("💵 Margen ganado (%)", 0.0, 2.0, 0.3) / 100
 
 if metodo_fin == "% de carga con crecimiento":
@@ -109,12 +119,17 @@ else:  # Ingreso manual
     monto_manual = []
     st.sidebar.markdown("✍️ Ingresa los montos por mes:")
     for i in range(periodos):
-        monto_mes = st.sidebar.number_input(f"Mes {i+1} ({fechas[i].strftime('%b %Y')})", value=0.0, key=f"manual_fin_{i}")
+        default_val = valores_base[i]
+        monto_mes = st.sidebar.number_input(
+            f"Mes {i+1} ({fechas[i].strftime('%b %Y')})",
+            value=default_val,
+            key=f"manual_fin_{i}"
+        )
         monto_manual.append(monto_mes)
     monto_fin = pd.Series(monto_manual)
 
-# Mostrar en consola para debug
-print(monto_fin / 1_000_000)  # En millones USD
+# Debug opcional
+# print(monto_fin / 1_000_000)
 
 # Aplicar condiciones de inicio
 ingreso_fin = monto_fin * margen_fin
@@ -131,7 +146,7 @@ fx_base = st.sidebar.radio("📊 Base FX:", ["Valor inicial", "Monto financiado"
 spread_fx_pct = st.sidebar.number_input("🪙 Spread promedio (% sobre USD)", value=0.5, step=0.01, format="%.2f")
 spread_fx = spread_fx_pct / 100  # Lo usamos como decimal en los cálculos
 
-crecimiento_fx = st.sidebar.slider("📈 Crecimiento mensual FX (%)", 0.0, 30.0, 10.0) / 100
+crecimiento_fx = st.sidebar.slider("📈 Crecimiento mensual FX (%)", 0.0, 40.0, 30.0) / 100
 
 precio_contenedor = st.sidebar.number_input("💲 Precio por container (USD)", value=5000)
 
@@ -139,7 +154,7 @@ vol_fx = []
 
 # --- OPCIÓN 1: VALOR INICIAL ---
 if fx_base == "Valor inicial":
-    fx_inicial = st.sidebar.number_input("📍 Volumen FX inicial (USD)", value=500_000)
+    fx_inicial = st.sidebar.number_input("📍 Volumen FX inicial (USD)", value=1000_000)
     for i in range(periodos):
         if i < mes_inicio_fx:
             vol_fx.append(0)
@@ -190,7 +205,7 @@ df["Ingreso FX"] = ingreso_fx
 # --- SEGURO CRÉDITO ---
 st.sidebar.header("🔐 Seguro de Crédito")
 mes_inicio_sc = st.sidebar.slider("🕒 Mes inicio seguro crédito", 0, periodos - 1, 4)
-pct_aseg_sc = st.sidebar.slider("🔒 % monto carga asegurado", 0.0, 10.0, 1.0) / 100
+pct_aseg_sc = st.sidebar.slider("🔒 % monto carga asegurado", 0.0, 10.0, 4.0) / 100
 prima_sc = st.sidebar.slider("💰 Prima (% del monto asegurado)", 0.3, 0.6, 0.4) / 100
 comision_sc = st.sidebar.slider("💵 Comisión ganada (%)", 0.0, 10.0, 5.0) / 100
 crecimiento_sc = st.sidebar.slider("📈 Crecimiento anual Seguro Crédito (%)", 0.0, 100.0, 0.0) / 100
@@ -214,7 +229,7 @@ df["Ingreso Seguro Crédito"] = ingreso_sc
 # --- SEGURO CARGA ---
 st.sidebar.header("📦 Seguro de Carga")
 mes_inicio_sca = st.sidebar.slider("🕒 Mes inicio seguro carga", 0, periodos - 1, 6)
-pct_aseg_sca = st.sidebar.slider("📦 % carga asegurada", 0.0, 10.0, 2.0) / 100
+pct_aseg_sca = st.sidebar.slider("📦 % carga asegurada", 0.0, 10.0, 5.0) / 100
 prima_sca = st.sidebar.slider("💰 Prima (% del valor carga)", 0.05, 0.15, 0.10) / 100
 comision_sca = st.sidebar.slider("💵 Comisión ganada (%)", 0.0, 10.0, 4.0) / 100
 crecimiento_sca = st.sidebar.slider("📈 Crecimiento anual Seguro Carga (%)", 0.0, 100.0, 0.0) / 100
@@ -226,10 +241,10 @@ df["Ingreso Seguro Carga"] = ingreso_sca
 
 # --- PAGOS NAVIERAS ---
 st.sidebar.header("🚢 Pagos a Navieras")
-mes_inicio_nav = st.sidebar.slider("🕒 Mes inicio pagos navieras", 0, periodos - 1, 6)
+mes_inicio_nav = st.sidebar.slider("🕒 Mes inicio pagos navieras", 0, periodos - 1, 2)
 pct_part_nav = st.sidebar.slider("📊 % participación sobre pagos posibles", 0.0, 30.0, 5.0) / 100
-flete_prom = st.sidebar.number_input("🚢 Flete promedio (USD)", value=100000.0)
-ingreso_fijo_nav = st.sidebar.number_input("💵 Ingreso fijo por pago", value=20.0)
+flete_prom = st.sidebar.number_input("🚢 Flete promedio (USD)", value=50000.0)
+ingreso_fijo_nav = st.sidebar.number_input("💵 Ingreso fijo por pago", value=25.0)
 comision_nav = st.sidebar.slider("💰 Comisión sobre monto pagado (%)", 0.0, 1.5, 0.75) / 100
 
 # Cálculo base
@@ -249,8 +264,8 @@ df["Ingreso Navieras"] = df["Ingreso Navieras Fijo"] + df["Ingreso Navieras Vari
 
 # --- PAGO PROVEEDORES ---
 st.sidebar.header("🏗️ Pago a Proveedores")
-mes_inicio_prov = st.sidebar.slider("🕒 Mes inicio pago a proveedores", 0, periodos - 1, 8)
-pct_prov = st.sidebar.slider("📦 % de carga orquestada que paga proveedores", 0.0, 20.0, 1.0) / 100
+mes_inicio_prov = st.sidebar.slider("🕒 Mes inicio pago a proveedores", 0, periodos - 1, 3)
+pct_prov = st.sidebar.slider("📦 % de carga orquestada que paga proveedores", 0.0, 20.0, 0.6) / 100
 
 monto_proveedor_base = []
 ingreso_proveedores = []
@@ -269,10 +284,10 @@ df["Ingreso Pago Proveedores"] = ingreso_proveedores
 
 # --- PAGO INLAND ---
 st.sidebar.header("🚚 Pago Inland")
-mes_inicio_inland = st.sidebar.slider("🕒 Mes inicio pago inland", 0, periodos - 1, 9)
+mes_inicio_inland = st.sidebar.slider("🕒 Mes inicio pago inland", 0, periodos - 1, 3)
 pct_part_inland = st.sidebar.slider("📦 % de containers con pago inland", 0.0, 20.0, 10.0) / 100
 flete_inland = st.sidebar.number_input("💲 Flete promedio inland (USD)", value=1500.0)
-comision_inland = st.sidebar.slider("💰 Comisión sobre inland (%)", 0.0, 10.0, 5.0) / 100
+comision_inland = st.sidebar.slider("💰 Comisión sobre inland (%)", 0.0, 2.0, 0.75) / 100
 
 containers_inland = df["Containers"] * pct_part_inland
 monto_inland = containers_inland * flete_inland
