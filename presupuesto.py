@@ -140,7 +140,7 @@ df["Ingreso Financiamiento"] = [i if j >= mes_inicio_fin else 0 for j, i in enum
 # --- FX ---
 st.sidebar.header("💱 FX")
 
-mes_inicio_fx = st.sidebar.slider("🕒 Mes inicio FX", 0, periodos - 1, 3)
+mes_inicio_fx = st.sidebar.slider("🕒 Mes inicio FX", 0, periodos - 1, 0)
 fx_base = st.sidebar.radio("📊 Base FX:", ["Valor inicial", "Monto financiado", "Valor orquestado", "Ambos"])
 
 spread_fx_pct = st.sidebar.number_input("🪙 Spread promedio (% sobre USD)", value=0.5, step=0.01, format="%.2f")
@@ -148,7 +148,7 @@ spread_fx = spread_fx_pct / 100  # Lo usamos como decimal en los cálculos
 
 crecimiento_fx = st.sidebar.slider("📈 Crecimiento mensual FX (%)", 0.0, 40.0, 30.0) / 100
 
-precio_contenedor = st.sidebar.number_input("💲 Precio por container (USD)", value=5000)
+precio_contenedor = st.sidebar.number_input("💲 Precio por container (USD)", value=30000)
 
 vol_fx = []
 
@@ -204,7 +204,7 @@ df["Ingreso FX"] = ingreso_fx
 
 # --- SEGURO CRÉDITO ---
 st.sidebar.header("🔐 Seguro de Crédito")
-mes_inicio_sc = st.sidebar.slider("🕒 Mes inicio seguro crédito", 0, periodos - 1, 4)
+mes_inicio_sc = st.sidebar.slider("🕒 Mes inicio seguro crédito", 0, periodos - 1, 1)
 pct_aseg_sc = st.sidebar.slider("🔒 % monto carga asegurado", 0.0, 10.0, 4.0) / 100
 prima_sc = st.sidebar.slider("💰 Prima (% del monto asegurado)", 0.3, 0.6, 0.4) / 100
 comision_sc = st.sidebar.slider("💵 Comisión ganada (%)", 0.0, 10.0, 5.0) / 100
@@ -228,7 +228,7 @@ df["Ingreso Seguro Crédito"] = ingreso_sc
 
 # --- SEGURO CARGA ---
 st.sidebar.header("📦 Seguro de Carga")
-mes_inicio_sca = st.sidebar.slider("🕒 Mes inicio seguro carga", 0, periodos - 1, 6)
+mes_inicio_sca = st.sidebar.slider("🕒 Mes inicio seguro carga", 0, periodos - 1, 1)
 pct_aseg_sca = st.sidebar.slider("📦 % carga asegurada", 0.0, 10.0, 5.0) / 100
 prima_sca = st.sidebar.slider("💰 Prima (% del valor carga)", 0.05, 0.15, 0.10) / 100
 comision_sca = st.sidebar.slider("💵 Comisión ganada (%)", 0.0, 10.0, 4.0) / 100
