@@ -16,18 +16,22 @@ st.title("📊 Dashboard Presupuesto Proyectado")
 
 # --- PARÁMETROS GENERALES ---
 st.sidebar.header("⚙️ Parámetros Generales")
+
+# Selección de fecha de inicio
 fecha_inicio = st.sidebar.date_input("📅 Fecha de inicio", datetime.date(2025, 8, 1))
 fecha_inicio = pd.to_datetime(fecha_inicio)
 
-periodos = 25
+# Total de periodos a proyectar (26 meses → hasta Sep-2027)
+periodos = 26
 fechas = [fecha_inicio + pd.DateOffset(months=i) for i in range(periodos)]
+
 
 # --- FILTRO DE PERIODO ---
 st.sidebar.header("📅 Filtro de periodo a visualizar")
 opcion_periodo = st.sidebar.radio(
     "Selecciona periodo:",
-    ["Todo", "Año 2025", "Año 2026", "Próximo trimestre", "Próximo semestre", "Próximos 24 meses"],
-    index=5
+    ["Todo", "Año 2025", "Año 2026", "Próximo trimestre", "Próximo semestre", "Próximos 24 meses", "Diciembre 2027"],
+    index=6
 )
 
 
@@ -50,7 +54,7 @@ containers_dict = {fecha.strftime('%b'): valor for fecha, valor in zip(meses_rea
 # Fechas de proyección: desde julio 2025 en adelante
 # Fechas de proyección: desde julio 2025 en adelante
 fecha_inicio = pd.to_datetime("2025-08-01")
-periodos = 25
+periodos = 29
 fechas = [fecha_inicio + pd.DateOffset(months=i) for i in range(periodos)]
 
 # Proyección con crecimiento anual acumulativo por mes
@@ -94,7 +98,7 @@ df = pd.DataFrame({
 valores_base = [
     500000, 500000, 1000000, 1500000, 4500000, 4500000, 4500000, 6500000,
     8500000, 10500000, 12500000, 14500000, 16500000, 18000000,
-    20000000, 20000000, 20000000, 20000000,20000000,20000000,20000000,20000000,20000000,20000000,20000000
+    20000000, 20000000, 20000000, 20000000,20000000,20000000,20000000,20000000,20000000,20000000,20000000,20000000,20000000,20000000,20000000
 ]
 valores_base += [0.0] * (periodos - len(valores_base))  # Rellenar si hay más meses
 
@@ -365,6 +369,8 @@ elif opcion_periodo == "Próximo semestre":
 elif opcion_periodo == "Próximos 24 meses":
     df_filtrado = df[(df["Fecha"] >= fecha_inicio) & (df["Fecha"] < fecha_inicio + pd.DateOffset(months=25))]
 
+elif opcion_periodo == "Diciembre 2027":
+    df_filtrado = df[(df["Fecha"] >= fecha_inicio) & (df["Fecha"] < fecha_inicio + pd.DateOffset(months=29))]
 
 
 # --- CÁLCULOS Y COLUMNAS PERSONALIZADAS ---
