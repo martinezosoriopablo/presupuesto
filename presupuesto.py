@@ -44,22 +44,22 @@ crecimiento_anual = st.sidebar.slider("📈 Crecimiento anual basado en datos re
 # Datos reales mensuales: enero 2024 a junio 2025 (18 valores)
 containers_reales = [
     7761, 5406, 6243, 6453, 5509, 5599, 8059, 8108, 7981, 9821, 10907, 13122,   # 2024
-    10995, 8619, 10428, 8915, 10047, 8157                                       # 2025 hasta junio
+    10995, 8619, 10428, 8915, 10047, 8157,12491                                       # 2025 hasta junio
 ]
 
 # Crear mapa de mes (formato 'Jul', 'Aug', etc.) a valores históricos
-meses_reales = pd.date_range(start="2024-01-01", periods=18, freq='MS')
+meses_reales = pd.date_range(start="2024-01-01", periods=19, freq='MS')
 containers_dict = {fecha.strftime('%b'): valor for fecha, valor in zip(meses_reales, containers_reales)}
 
-# Fechas de proyección: desde julio 2025 en adelante
-# Fechas de proyección: desde julio 2025 en adelante
+# Fechas de proyección: desde Agosto 2025 en adelante
+# Fechas de proyección: desde Agosto 2025 en adelante
 fecha_inicio = pd.to_datetime("2025-08-01")
 periodos = 29
 fechas = [fecha_inicio + pd.DateOffset(months=i) for i in range(periodos)]
 
 # Proyección con crecimiento anual acumulativo por mes
 for i, fecha in enumerate(fechas):
-    mes_idx = i + 18  # 18 valores reales hasta junio 2025
+    mes_idx = i + 19  # 18 valores reales hasta junio 2025
     año_anterior_idx = mes_idx - 12
 
     if año_anterior_idx < len(containers_reales):
@@ -70,7 +70,7 @@ for i, fecha in enumerate(fechas):
     nuevo_valor = round(base * (1 + crecimiento_anual), 2)
     containers_reales.append(nuevo_valor)
 
-containers_proyectados = containers_reales[18:]  # Solo proyecciones desde julio 2025
+containers_proyectados = containers_reales[19:]  # Solo proyecciones desde julio 2025
 
 
 
@@ -404,9 +404,9 @@ df_filtrado["Total Ingresos"] = df_filtrado[[
 st.subheader("📌 KPIs del periodo seleccionado")
 st.markdown("---")
 
-# Función para renderizar cada fila
-def render_kpi_row(icon, title, label1, val1, label2, val2, label3, val3):
-    col0, col1, col2, col3 = st.columns([2, 2.5, 2.5, 2.5])
+# Nueva función con 4 columnas de métricas
+def render_kpi_row(icon, title, label1, val1, label2, val2, label3, val3, label4, val4):
+    col0, col1, col2, col3, col4 = st.columns([2, 2.5, 2.5, 2.5, 2.5])
     with col0:
         st.markdown(f"### {icon} **{title}**")
     with col1:
@@ -415,106 +415,126 @@ def render_kpi_row(icon, title, label1, val1, label2, val2, label3, val3):
         st.metric(label2, val2)
     with col3:
         st.metric(label3, val3)
+    with col4:
+        st.metric(label4, val4)
     st.markdown("<hr style='border-top: 1px dashed #DDD;'>", unsafe_allow_html=True)
+
 # --- Cálculo de KPIs base ---
 total_containers = df_filtrado['Containers'].sum()
+
 ingreso_orquestacion = df_filtrado["Ingreso Orquestación"].sum()
 margen_orquestacion = ingreso_orquestacion / (total_containers * precio_contenedor) * 100 if total_containers > 0 else 0
+usd_x_container_orq = ingreso_orquestacion / total_containers if total_containers else 0
 
 monto_fin = df_filtrado['Monto Financiado'].sum()
 ingreso_fin = df_filtrado['Ingreso Financiamiento'].sum()
 margen_fin = ingreso_fin / monto_fin * 100 if monto_fin != 0 else 0
+usd_x_container_fin = ingreso_fin / total_containers if total_containers else 0
 
 vol_fx = df_filtrado['Volumen FX'].sum()
 ingreso_fx = df_filtrado['Ingreso FX'].sum()
 margen_fx = ingreso_fx / vol_fx * 100 if vol_fx != 0 else 0
+usd_x_container_fx = ingreso_fx / total_containers if total_containers else 0
 
 monto_sc = df_filtrado['Monto Asegurado SC'].sum()
 ingreso_sc = df_filtrado['Ingreso Seguro Crédito'].sum()
 margen_sc = ingreso_sc / monto_sc * 100 if monto_sc != 0 else 0
+usd_x_container_sc = ingreso_sc / total_containers if total_containers else 0
 
 monto_sca = df_filtrado['Monto Asegurado SCA'].sum()
 ingreso_sca = df_filtrado['Ingreso Seguro Carga'].sum()
 margen_sca = ingreso_sca / monto_sca * 100 if monto_sca != 0 else 0
+usd_x_container_sca = ingreso_sca / total_containers if total_containers else 0
 
 monto_nav = df_filtrado['Monto Pagado Navieras'].sum()
 ingreso_nav = df_filtrado['Ingreso Navieras'].sum()
 margen_nav = ingreso_nav / monto_nav * 100 if monto_nav != 0 else 0
+usd_x_container_nav = ingreso_nav / total_containers if total_containers else 0
 
 monto_prov = df_filtrado['Monto Gateway Proveedores'].sum()
 ingreso_prov = df_filtrado['Ingreso Gateway Proveedores'].sum()
 margen_prov = ingreso_prov / monto_prov * 100 if monto_prov != 0 else 0
+usd_x_container_prov = ingreso_prov / total_containers if total_containers else 0
 
 monto_inland = df_filtrado['Monto Pago Inland'].sum()
 ingreso_inland = df_filtrado['Ingreso Pago Inland'].sum()
 margen_inland = ingreso_inland / monto_inland * 100 if monto_inland != 0 else 0
+usd_x_container_inland = ingreso_inland / total_containers if total_containers else 0
 
-# --- KPIs por línea de negocio (respetando tus nombres) ---
+# --- KPIs por línea de negocio ---
 render_kpi_row("📦", "Orquestación",
     "Total Containers", f"{total_containers:,.0f}",
     "Ingreso Orquestación", f"USD ${ingreso_orquestacion:,.0f}",
-    "Margen Orquestación", f"{margen_orquestacion:.2f}%"
+    "Margen Orquestación", f"{margen_orquestacion:.2f}%",
+    "USD/Container", f"USD ${usd_x_container_orq:.2f}"
 )
 
 render_kpi_row("💸", "Financiamiento",
     "Monto Financiado", f"USD ${monto_fin:,.0f}",
     "Ingreso Financiamiento", f"USD ${ingreso_fin:,.0f}",
-    "Margen Financiamiento", f"{margen_fin:.2f}%"
+    "Margen Financiamiento", f"{margen_fin:.2f}%",
+    "USD/Container", f"USD ${usd_x_container_fin:.2f}"
 )
 
 render_kpi_row("💱", "FX",
     "Volumen FX", f"USD ${vol_fx:,.0f}",
     "Ingreso FX", f"USD ${ingreso_fx:,.0f}",
-    "Margen FX", f"{margen_fx:.2f}%"
+    "Margen FX", f"{margen_fx:.2f}%",
+    "USD/Container", f"USD ${usd_x_container_fx:.2f}"
 )
 
 render_kpi_row("🛡️", "Seguro Crédito",
     "Monto Asegurado", f"USD ${monto_sc:,.0f}",
     "Ingreso Seguro Crédito", f"USD ${ingreso_sc:,.0f}",
-    "Margen Seguro Crédito", f"{margen_sc:.2f}%"
+    "Margen Seguro Crédito", f"{margen_sc:.2f}%",
+    "USD/Container", f"USD ${usd_x_container_sc:.2f}"
 )
 
 render_kpi_row("📦", "Seguro de Carga",
     "Monto Asegurado", f"USD ${monto_sca:,.0f}",
     "Ingreso Seguro Carga", f"USD ${ingreso_sca:,.0f}",
-    "Margen Seguro Carga", f"{margen_sca:.3f}%"
+    "Margen Seguro Carga", f"{margen_sca:.3f}%",
+    "USD/Container", f"USD ${usd_x_container_sca:.2f}"
 )
 
 render_kpi_row("🚢", "Pago a Navieras",
     "Monto Pagado", f"USD ${monto_nav:,.0f}",
     "Ingreso Navieras", f"USD ${ingreso_nav:,.0f}",
-    "Margen Navieras", f"{margen_nav:.2f}%"
+    "Margen Navieras", f"{margen_nav:.2f}%",
+    "USD/Container", f"USD ${usd_x_container_nav:.2f}"
 )
 
 render_kpi_row("🏗️", "Gateway de Pago",
     "Monto Gateway", f"USD ${monto_prov:,.0f}",
     "Ingreso Proveedores", f"USD ${ingreso_prov:,.0f}",
-    "Margen Proveedores", f"{margen_prov:.2f}%"
+    "Margen Proveedores", f"{margen_prov:.2f}%",
+    "USD/Container", f"USD ${usd_x_container_prov:.2f}"
 )
 
 render_kpi_row("🚚", "Inland",
     "Monto Inland", f"USD ${monto_inland:,.0f}",
     "Ingreso Inland", f"USD ${ingreso_inland:,.0f}",
-    "Margen Inland", f"{margen_inland:.2f}%"
+    "Margen Inland", f"{margen_inland:.2f}%",
+    "USD/Container", f"USD ${usd_x_container_inland:.2f}"
 )
 
-
-total_ingresos= (
+# --- KPIs globales finales ---
+total_ingresos = (
     ingreso_orquestacion + ingreso_fin + ingreso_fx +
-    ingreso_sc + ingreso_sca + ingreso_nav + ingreso_prov + ingreso_inland)
-total_ingresos_orquestacion= ingreso_orquestacion 
+    ingreso_sc + ingreso_sca + ingreso_nav + ingreso_prov + ingreso_inland
+)
+total_ingresos_orquestacion = ingreso_orquestacion
+total_ingresos_financieros = total_ingresos - ingreso_orquestacion
 
-total_ingresos_financieros= ( ingreso_fin + ingreso_fx +
-    ingreso_sc + ingreso_sca + ingreso_nav + ingreso_prov + ingreso_inland)
+usd_x_container_total_orq = total_ingresos_orquestacion / total_containers if total_containers else 0
+usd_x_container_total_fin = total_ingresos_financieros / total_containers if total_containers else 0
 
-usd_x_container_orq= total_ingresos_orquestacion/ total_containers if total_containers != 0 else 0
-usd_x_container_fin= total_ingresos_financieros/ total_containers if total_containers != 0 else 0
-render_kpi_row("📈","KPIs Globales",
+render_kpi_row("📈", "KPIs Globales",
     "Total Ingresos", f"USD ${total_ingresos:,.0f}",
-    "USD por Contenedor Orquestacion", f"USD ${usd_x_container_orq:,.2f}",    
-    "USD por Contenedor Prod. Fin.", f"USD ${usd_x_container_fin:,.2f}")
- 
-
+    "USD por Contenedor Orquestación", f"USD ${usd_x_container_total_orq:.2f}",
+    "USD por Contenedor Prod. Fin.", f"USD ${usd_x_container_total_fin:.2f}",
+    "USD por Contenedor Total", f"USD ${(total_ingresos / total_containers) if total_containers else 0:.2f}"
+)
 
 
 
@@ -567,7 +587,7 @@ total_final.index = [total_final_index]
 df_resumen_final = pd.concat([df_resumen_final, total_final])
 
 # Mostrar tabla final
-st.subheader("📋 Resumen transpuesto por línea de negocio")
+st.subheader("📋 Resumen por línea de negocio")
 
 def safe_format(val, row_name=None):
     try:
