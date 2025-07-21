@@ -44,7 +44,7 @@ if pagina == "Presupuesto":
     
     precio_orquestacion = st.sidebar.number_input("💰 Precio por orquestación (USD/container)", value=4.28)
     # --- Ingreso manual del margen de orquestación ---
-    margen_manual_orq = st.sidebar.number_input("🧮 Margen manual Orquestación (%)", min_value=0.0, max_value=100.0, value=1.0, step=0.01)
+    margen_manual_orq = st.sidebar.number_input("🧮 Margen Orquestación (%)", min_value=0.0, max_value=100.0, value=1.0, step=0.01)
     # Se usará este valor en lugar del margen calculado
     
     crecimiento_anual = st.sidebar.slider("📈 Crecimiento anual basado en datos reales (%)", 20.0, 70.0, 55.0) / 100
@@ -492,7 +492,7 @@ if pagina == "Presupuesto":
     render_kpi_row("📦", "Orquestación",
         "Total Containers", f"{total_containers:,.0f}",
         "Ingreso Orquestación", f"USD ${ingreso_orquestacion:,.0f}",
-        "Margen Neto Orquestación", f"{margen_orquestacion:.2f}%",
+        "Margen Bruto Orquestación", f"{margen_orquestacion:.2f}%",
         "USD/Cont. Orquestado", f"USD ${usd_x_container_orq:.2f}"
     )
     
