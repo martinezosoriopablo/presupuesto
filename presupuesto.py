@@ -237,7 +237,8 @@ if pagina == "Presupuesto":
     monto_asegurado_sc = [monto_base_sc[i] * (1 + crecimiento_sc) ** (i / 12) for i in range(periodos)]
     # Inicializa la lista con ceros
     ingreso_sc = [0.0] * periodos
-    
+    df["Monto Asegurado SC"] = [m if i >= mes_inicio_sc else 0 for i, m in enumerate(monto_asegurado_sc)]
+
     # Calcula y distribuye en 12 meses
     for i in range(mes_inicio_sc, periodos):
         ingreso_total = monto_asegurado_sc[i] * prima_sc * comision_sc
@@ -259,7 +260,8 @@ if pagina == "Presupuesto":
     monto_asegurado_sca = [valor_carga[i] * pct_aseg_sca * (1 + crecimiento_sca) ** (i / 12) for i in range(periodos)]
     ingreso_sca = [m * prima_sca * comision_sca if i >= mes_inicio_sca else 0 for i, m in enumerate(monto_asegurado_sca)]
     df["Ingreso Seguro Carga"] = ingreso_sca
-    
+    df["Monto Asegurado SCA"] = [m if i >= mes_inicio_sca else 0 for i, m in enumerate(monto_asegurado_sca)]
+
     
     # --- PAGOS NAVIERAS ---
     st.sidebar.header("🚢 Pagos a Navieras")
@@ -309,7 +311,9 @@ if pagina == "Presupuesto":
     
     df["Ingreso Navieras Variable"] = ingreso_nav_var
     df["Ingreso Navieras"] = df["Ingreso Modulo Auditoria Fletes"] + df["Ingreso Navieras Variable"]
-    df["Monto Pagado Navieras"] = monto_fletes
+    #df["Monto Pagado Navieras"] = monto_fletes
+    df["Monto Pagado Navieras"] = [m if i >= mes_inicio_nav else 0 for i, m in enumerate(monto_fletes)]
+
     df["Contenedores Pagados"] = df["Monto Pagado Navieras"] / flete_prom
         
     
@@ -399,15 +403,15 @@ if pagina == "Presupuesto":
     # --- CÁLCULOS Y COLUMNAS PERSONALIZADAS ---
     
     # Recalculo de valores base
-    monto_asegurado_sc = valor_carga * pct_aseg_sc
-    df_filtrado["Monto Asegurado SC"] = [m if i >= mes_inicio_sc else 0 for i, m in enumerate(monto_asegurado_sc)]
+    #monto_asegurado_sc = valor_carga * pct_aseg_sc
+    df_filtrado["Monto Asegurado SC"] = df["Monto Asegurado SC"]
 
-    monto_asegurado_sca = valor_carga * pct_aseg_sca
-    df_filtrado["Monto Asegurado SCA"] = [m if i >= mes_inicio_sca else 0 for i, m in enumerate(monto_asegurado_sca)]
+    #monto_asegurado_sca = valor_carga * pct_aseg_sca
+    df_filtrado["Monto Asegurado SCA"] = df["Monto Asegurado SCA"]
     
     
-    monto_pagado_navieras = valor_carga * 0.10 * pct_part_nav
-    df_filtrado["Monto Pagado Navieras"] = [m if i >= mes_inicio_nav else 0 for i, m in enumerate(monto_pagado_navieras)]
+   # monto_pagado_navieras = valor_carga * 0.10 * pct_part_nav
+    df_filtrado["Monto Pagado Navieras"] = df["Monto Pagado Navieras"]
 
     
     df_filtrado["Containers Orquestados"] = df_filtrado["Containers"]
