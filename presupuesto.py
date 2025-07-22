@@ -44,7 +44,7 @@ if pagina == "Presupuesto":
     
     precio_orquestacion = st.sidebar.number_input("💰 Precio por orquestación (USD/container)", value=4.28)
     # --- Ingreso manual del margen de orquestación ---
-    margen_manual_orq = st.sidebar.number_input("🧮 Margen Orquestación (%)", min_value=0.0, max_value=100.0, value=1.0, step=0.01)
+    margen_manual_orq = st.sidebar.number_input("🧮 Margen Orquestación (%)", min_value=0.0, max_value=100.0, value=65.0, step=0.01)
     # Se usará este valor en lugar del margen calculado
     
     crecimiento_anual = st.sidebar.slider("📈 Crecimiento anual basado en datos reales (%)", 20.0, 70.0, 55.0) / 100
@@ -59,13 +59,13 @@ if pagina == "Presupuesto":
     meses_reales = pd.date_range(start="2024-01-01", periods=19, freq='MS')
     containers_dict = {fecha.strftime('%b'): valor for fecha, valor in zip(meses_reales, containers_reales)}
     
-    # Fechas de proyección: desde Agosto 2025 en adelante
+    
     # Fechas de proyección: desde Agosto 2025 en adelante
     fecha_inicio = pd.to_datetime("2025-08-01")
     periodos = 29
     fechas = [fecha_inicio + pd.DateOffset(months=i) for i in range(periodos)]
     
-    # Proyección con crecimiento anual acumulativo por mes
+   
     for i, fecha in enumerate(fechas):
         mes_idx = i + 19  # 18 valores reales hasta junio 2025
         año_anterior_idx = mes_idx - 12
@@ -145,8 +145,7 @@ if pagina == "Presupuesto":
             monto_manual.append(monto_mes)
         monto_fin = pd.Series(monto_manual)
     
-    # Debug opcional
-    # print(monto_fin / 1_000_000)
+   
     
     # Aplicar condiciones de inicio
     ingreso_fin = monto_fin * margen_fin
@@ -310,10 +309,8 @@ if pagina == "Presupuesto":
     df["Ingreso Modulo Auditoria Fletes"] = ingreso_nav_fijo
     
     df["Ingreso Navieras Variable"] = ingreso_nav_var
-    df["Ingreso Navieras"] = df["Ingreso Modulo Auditoria Fletes"] + df["Ingreso Navieras Variable"]
-    #df["Monto Pagado Navieras"] = monto_fletes
+    df["Ingreso Navieras"] = df["Ingreso Modulo Auditoria Fletes"] + df["Ingreso Navieras Variable"]   
     df["Monto Pagado Navieras"] = [m if i >= mes_inicio_nav else 0 for i, m in enumerate(monto_fletes)]
-
     df["Contenedores Pagados"] = df["Monto Pagado Navieras"] / flete_prom
         
     
@@ -367,9 +364,7 @@ if pagina == "Presupuesto":
     df["Containers Inland"] = containers_inland
     df["Ingreso Pago Inland"] = [ing if i >= mes_inicio_inland else 0 for i, ing in enumerate(ingreso_inland)]
     monto_pago_inland = containers_inland * precio_contenedor
-    df["Monto Pago Inland"] = [m if i >= mes_inicio_inland else 0 for i, m in enumerate(monto_pago_inland)]
-    
-    
+    df["Monto Pago Inland"] = [m if i >= mes_inicio_inland else 0 for i, m in enumerate(monto_pago_inland)]   
     
     
     
@@ -423,11 +418,7 @@ if pagina == "Presupuesto":
     df_filtrado["Ingreso Navieras Variable"] = df["Ingreso Navieras Variable"]
     df_filtrado["Ingreso Navieras"] = df["Ingreso Navieras"]
     df_filtrado["Monto Pagado Navieras"] = df["Monto Pagado Navieras"]
-    df_filtrado["Contenedores Pagados"] = df["Contenedores Pagados"]
-    df_filtrado["Ingreso Modulo Auditoria Fletes"] = df["Ingreso Modulo Auditoria Fletes"]
-    df_filtrado["Ingreso Navieras Variable"] = df["Ingreso Navieras Variable"]
-    df_filtrado["Ingreso Navieras"] = df["Ingreso Navieras"]
-
+    df_filtrado["Contenedores Pagados"] = df["Contenedores Pagados"]    
     df_filtrado["Monto Gateway Proveedores"] = df["Monto Gateway Proveedores"]
     df_filtrado["Ingreso Gateway Proveedores"] = df["Ingreso Gateway Proveedores"]
     df_filtrado["Monto Pago Inland"] = df["Monto Pago Inland"]
@@ -886,7 +877,7 @@ if pagina == "Mercado":
     }
 
     # Mostrar cada línea de negocio
-    with st.expander("📊 Proyección por Línea de Negocio"):
+    with st.expander("📊 Proyección por Línea de Negocio", expanded=True):
         for key in part_actual:
             actual = part_actual[key]
             deseado = part_deseada[key]
