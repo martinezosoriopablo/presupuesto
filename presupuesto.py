@@ -649,7 +649,9 @@ if pagina == "Presupuesto":
     total_final = df_resumen.loc[["Total Ingresos"]]
     total_final.index = [total_final_index]
     df_resumen_final = pd.concat([df_resumen_final, total_final])
+    # Dentro del bloque de la tabla
     
+
     # Mostrar tabla final
     st.subheader("📋 Resumen por línea de negocio")
     
@@ -676,6 +678,38 @@ if pagina == "Presupuesto":
             else:
                 styles.append(["background-color: #f9f9f9"] * df.shape[1])
         return pd.DataFrame(styles, index=df.index, columns=df.columns)
+   
+
+    
+
+
+    # ----------------------------
+    # 🔻 COSTOS, INGRESO NETO Y CAJA ACUMULADA
+    # ----------------------------
+    st.sidebar.subheader("💼 Parámetros Financieros Adicionales")
+    caja_inicial = st.sidebar.number_input("💰 Caja Inicial (USD)", value=0)
+    
+    # Entrada manual de costos por mes en sidebar
+    st.sidebar.markdown("### ✍️ Costos Totales por Mes")
+    costos_totales = []
+    for col in df_resumen.columns:
+        costo_mes = st.sidebar.number_input(f"Costo {col}", min_value=0.0, value=0.0, key=f"costo_sidebar_{col}")
+        costos_totales.append(costo_mes)
+    
+    # Insertar fila de Costos
+    df_resumen_final.loc["Costos Totales"] = costos_totales
+    
+    # Calcular Ingreso Neto (Total Ingresos - Costos)
+    total_ingresos = df_resumen_final.loc["Total Ingresos"].values
+    ingreso_neto = [ing - c for ing, c in zip(total_ingresos, costos_totales)]
+    df_resumen_final.loc["Ingreso Neto"] = ingreso_neto
+    
+    # Calcular Caja Acumulada (Caja Inicial + sumatoria de ingresos netos)
+    caja = [caja_inicial + ingreso_neto[0]]
+    for i in range(1, len(ingreso_neto)):
+        caja.append(caja[-1] + ingreso_neto[i])
+    df_resumen_final.loc["Caja Acumulada"] = caja
+    
     
     # Mostrar tabla estilizada correctamente formateada
     df_resumen_final.index.name = "Concepto"
@@ -754,21 +788,22 @@ if pagina == "Presupuesto":
         ax2.set_title("Trimestral")
         ax2.tick_params(axis='x', rotation=0)
         st.pyplot(fig2)
-if pagina == "Presupuesto":   
-    st.session_state.df = df
-    
-    fechas_filtradas = df_filtrado["Fecha"].tolist()
-
-    st.session_state.df_filtrado = df_filtrado
-    st.session_state.periodo_actual = opcion_periodo
-    st.session_state.periodos = periodos
-    st.session_state.fecha_inicio = fecha_inicio
-    st.session_state.fechas = fechas
-    st.session_state.fechas_filtradas = fechas_filtradas
-
-    st.session_state.precio_contenedor = precio_contenedor
-    st.session_state.spread_fx = spread_fx
-    st.session_state.flete_prom = flete_prom
+    if pagina == "Presupuesto":   
+        st.session_state.df = df
+        
+        fechas_filtradas = df_filtrado["Fecha"].tolist()
+       
+        st.session_state.df_filtrado = df_filtrado
+        st.session_state.periodo_actual = opcion_periodo
+        st.session_state.periodos = periodos
+        st.session_state.fecha_inicio = fecha_inicio
+        st.session_state.fechas = fechas
+        st.session_state.fechas_filtradas = fechas_filtradas
+        st.session_state.df_resumen = df_resumen
+        
+        st.session_state.precio_contenedor = precio_contenedor
+        st.session_state.spread_fx = spread_fx
+        st.session_state.flete_prom = flete_prom
 
 if pagina == "Mercado":
     # Validación
@@ -779,6 +814,7 @@ if pagina == "Mercado":
             st.stop()
 
     # Datos base
+    df_resumen=st.session_state.df_resumen
     df = st.session_state.df
     df_filtrado = st.session_state.df_filtrado
     opcion_periodo = st.session_state.periodo_actual
