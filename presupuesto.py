@@ -265,7 +265,7 @@ if pagina == "Presupuesto":
     st.sidebar.header("🚢 Pagos a Navieras")
     mes_inicio_nav = st.sidebar.slider("🕒 Mes inicio pagos navieras", 0, periodos - 1, 2)
     pct_part_nav = st.sidebar.slider("📊 % participación sobre pagos posibles", 0.0, 30.0, 5.0) / 100
-    flete_prom = st.sidebar.number_input("🚢 Flete promedio (USD)", value=50000.0)
+    flete_prom = st.sidebar.number_input("🚢 Monto promedio pagado Flete(USD)", value=50000.0)
     comision_nav = st.sidebar.slider("💰 Comisión sobre monto pagado (%)", 0.0, 1.5, 0.75) / 100
     
     # Parte variable (comisión)
@@ -349,7 +349,9 @@ if pagina == "Presupuesto":
     # Aplicar desde mes de inicio
     df["Containers Inland"] = containers_inland
     df["Ingreso Pago Inland"] = [ing if i >= mes_inicio_inland else 0 for i, ing in enumerate(ingreso_inland)]
-    df["Monto Pago Inland"] = containers_inland *precio_contenedor
+    monto_pago_inland = containers_inland * precio_contenedor
+    df["Monto Pago Inland"] = [m if i >= mes_inicio_inland else 0 for i, m in enumerate(monto_pago_inland)]
+
     
     
     
@@ -384,9 +386,16 @@ if pagina == "Presupuesto":
     # --- CÁLCULOS Y COLUMNAS PERSONALIZADAS ---
     
     # Recalculo de valores base
-    df_filtrado["Monto Asegurado SC"] = valor_carga * pct_aseg_sc
-    df_filtrado["Monto Asegurado SCA"] = valor_carga * pct_aseg_sca
-    df_filtrado["Monto Pagado Navieras"] = valor_carga * 0.10 * pct_part_nav
+    monto_asegurado_sc = valor_carga * pct_aseg_sc
+    df_filtrado["Monto Asegurado SC"] = [m if i >= mes_inicio_sc else 0 for i, m in enumerate(monto_asegurado_sc)]
+
+    monto_asegurado_sca = valor_carga * pct_aseg_sca
+    df_filtrado["Monto Asegurado SCA"] = [m if i >= mes_inicio_sca else 0 for i, m in enumerate(monto_asegurado_sca)]
+    
+    
+    monto_pagado_navieras = valor_carga * 0.10 * pct_part_nav
+    df_filtrado["Monto Pagado Navieras"] = [m if i >= mes_inicio_nav else 0 for i, m in enumerate(monto_pagado_navieras)]
+
     
     df_filtrado["Containers Orquestados"] = df_filtrado["Containers"]
     df_filtrado["Monto Financiado Total"] = df_filtrado["Monto Financiado"]
@@ -730,8 +739,135 @@ if pagina == "Presupuesto":
         ax2.set_title("Trimestral")
         ax2.tick_params(axis='x', rotation=0)
         st.pyplot(fig2)
-elif pagina == "Mercado":
-    st.title("🌍 Dashboard Mercado")
-    st.markdown("Aquí podrás mostrar datos de mercado, cotizaciones, tasas, etc.")
-    st.info("🔧 Esta sección está en construcción.")    
+if pagina == "Presupuesto":   
+    st.session_state.df = df
     
+    fechas_filtradas = df_filtrado["Fecha"].tolist()
+
+    st.session_state.df_filtrado = df_filtrado
+    st.session_state.periodo_actual = opcion_periodo
+    st.session_state.periodos = periodos
+    st.session_state.fecha_inicio = fecha_inicio
+    st.session_state.fechas = fechas
+    st.session_state.fechas_filtradas = fechas_filtradas
+
+    st.session_state.precio_contenedor = precio_contenedor
+    st.session_state.spread_fx = spread_fx
+    st.session_state.flete_prom = flete_prom
+
+if pagina == "Mercado":
+    # Validación
+    variables_requeridas = ["df", "df_filtrado", "periodo_actual", "spread_fx", "precio_contenedor", "flete_prom"]
+    for var in variables_requeridas:
+        if var not in st.session_state:
+            st.warning("⚠️ Primero debes visitar la pestaña Presupuesto para generar los datos.")
+            st.stop()
+
+    # Datos base
+    df = st.session_state.df
+    df_filtrado = st.session_state.df_filtrado
+    opcion_periodo = st.session_state.periodo_actual
+    spread_fx = st.session_state.spread_fx
+    precio_contenedor = st.session_state.precio_contenedor
+    flete_prom = st.session_state.flete_prom
+
+    st.title("🌍 Dashboard Mercado")
+    st.markdown("Proyección de ingresos según participación de mercado deseada.")
+
+    # Estilo para línea punteada y títulos
+    st.markdown("""
+    <style>
+    .divider {
+        border-top: 1px dashed #bbb;
+        margin: 15px 0 25px 0;
+    }
+    .metric-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Sidebar - sliders
+    st.sidebar.header("🎯 Participación Deseada")
+    part_deseada = {
+        "Orquestación": st.sidebar.slider("📦 Orquestación (%)", 0.0, 5.0, 1.0),
+        "FX": st.sidebar.slider("💱 FX (%)", 0.0, 5.0, 0.5),
+        "Financiamiento": st.sidebar.slider("💸 Financiamiento (%)", 0.0, 5.0, 0.3),
+        "Inland": st.sidebar.slider("🚚 Inland (%)", 0.0, 5.0, 0.2),
+        "Seguro Crédito": st.sidebar.slider("🔐 Seguro Crédito (%)", 0.0, 5.0, 0.2),
+        "Seguro Carga": st.sidebar.slider("📦 Seguro Carga (%)", 0.0, 5.0, 0.2),
+        "Navieras": st.sidebar.slider("🚢 Pagos Navieras (%)", 0.0, 5.0, 0.5)
+    }
+
+    # Periodo seleccionado
+    if opcion_periodo == "Todo":
+        meses_filtrados = df_filtrado
+        total_container_periodo = 300_000_000
+    elif opcion_periodo == "Año 2025":
+        meses_filtrados = df_filtrado[df_filtrado["Fecha"].dt.year == 2025]
+        total_container_periodo = 300_000_000
+    elif opcion_periodo == "Próximo trimestre":
+        meses_filtrados = df_filtrado.iloc[:3]
+        total_container_periodo = 75_000_000
+    elif opcion_periodo == "Primer semestre":
+        meses_filtrados = df_filtrado.iloc[:6]
+        total_container_periodo = 150_000_000
+    else:
+        meses_filtrados = df_filtrado
+        total_container_periodo = 300_000_000
+
+    # Cálculos de contenedores
+    cont_orq = meses_filtrados["Containers"].sum()
+    cont_fx = (meses_filtrados["Ingreso FX"] / (spread_fx * precio_contenedor)).sum()
+    cont_fin = (meses_filtrados["Monto Financiado"] / precio_contenedor).sum()
+    cont_inland = meses_filtrados["Containers Inland"].sum()
+    cont_sc = (meses_filtrados["Monto Asegurado SC"] / precio_contenedor).sum()
+    cont_sca = (meses_filtrados["Monto Asegurado SCA"] / precio_contenedor).sum()
+    cont_nav = (meses_filtrados["Monto Pagado Navieras"] / flete_prom).sum()
+
+    part_actual = {
+        "Orquestación": cont_orq / total_container_periodo * 100,
+        "FX": cont_fx / total_container_periodo * 100,
+        "Financiamiento": cont_fin / total_container_periodo * 100,
+        "Inland": cont_inland / total_container_periodo * 100,
+        "Seguro Crédito": cont_sc / total_container_periodo * 100,
+        "Seguro Carga": cont_sca / total_container_periodo * 100,
+        "Navieras": cont_nav / total_container_periodo * 100
+    }
+
+    ingreso_unitario = {
+        "Orquestación": 4.2,
+        "FX": spread_fx * precio_contenedor,
+        "Financiamiento": 90,
+        "Inland": 25,
+        "Seguro Crédito": 4,
+        "Seguro Carga": 5,
+        "Navieras": flete_prom
+    }
+
+    iconos = {
+        "Orquestación": "📦",
+        "FX": "💱",
+        "Financiamiento": "💸",
+        "Inland": "🚚",
+        "Seguro Crédito": "🔐",
+        "Seguro Carga": "📦",
+        "Navieras": "🚢"
+    }
+
+    # Mostrar cada línea de negocio
+    with st.expander("📊 Proyección por Línea de Negocio"):
+        for key in part_actual:
+            actual = part_actual[key]
+            deseado = part_deseada[key]
+            delta_cont = (deseado - actual) / 100 * total_container_periodo
+            ingreso_potencial = delta_cont * ingreso_unitario[key]
+
+            st.markdown(f'<div class="metric-title">{iconos[key]} {key}</div>', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns([1, 1, 2])
+            col1.metric("📊 Participación actual", f"{actual:.3f}%")
+            col2.metric("🎯 Participación deseada", f"{deseado:.3f}%")
+            col3.metric("💰 Potencial ingreso extra", f"USD ${ingreso_potencial:,.0f}")
+            st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
