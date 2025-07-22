@@ -277,9 +277,14 @@ if pagina == "Presupuesto":
     st.sidebar.header("🧾 Suscripción Módulo Auditoria Fletes")
     mes_inicio_suscripcion = st.sidebar.slider("🕒 Mes inicio suscripción módulo", 0, periodos - 1, 2)
     clientes_iniciales = st.sidebar.number_input("👥 Clientes iniciales", min_value=0, value=5)
-    crecimiento_clientes = st.sidebar.slider("📈 Crecimiento mensual clientes activos (%)", 0.0, 50.0, 20.0) / 100
     precio_suscripcion = st.sidebar.number_input("💵 Precio mensual por cliente (USD)", value=150.0)
     
+    # Nuevas tasas diferenciadas por año
+    crecimiento_2025 = st.sidebar.slider("📈 Crecimiento mensual clientes (2025)", 0.0, 50.0, 20.0) / 100
+    crecimiento_2026 = st.sidebar.slider("📈 Crecimiento mensual clientes (2026)", 0.0, 50.0, 10.0) / 100
+    crecimiento_2027 = st.sidebar.slider("📈 Crecimiento mensual clientes (2027)", 0.0, 50.0, 5.0) / 100
+    
+    # Lógica de crecimiento variable por año
     clientes_activos = []
     for i in range(periodos):
         if i < mes_inicio_suscripcion:
@@ -287,7 +292,14 @@ if pagina == "Presupuesto":
         elif i == mes_inicio_suscripcion:
             clientes_activos.append(clientes_iniciales)
         else:
-            clientes_activos.append(clientes_activos[-1] * (1 + crecimiento_clientes))
+            año = fechas[i].year
+            if año == 2025:
+                tasa = crecimiento_2025
+            elif año == 2026:
+                tasa = crecimiento_2026
+            else:
+                tasa = crecimiento_2027
+            clientes_activos.append(clientes_activos[-1] * (1 + tasa))
     
     ingreso_nav_fijo = [c * precio_suscripcion for c in clientes_activos]
     
@@ -297,8 +309,9 @@ if pagina == "Presupuesto":
     
     df["Ingreso Navieras Variable"] = ingreso_nav_var
     df["Ingreso Navieras"] = df["Ingreso Modulo Auditoria Fletes"] + df["Ingreso Navieras Variable"]
-    
-    
+    df["Monto Pagado Navieras"] = monto_fletes
+    df["Contenedores Pagados"] = df["Monto Pagado Navieras"] / flete_prom
+        
     
     # --- GATEWAY PAGO FACTURAS DE EXPORTACIÓN ---
     st.sidebar.header("🏗️ Gateway Pago Facturas de Exportación")
@@ -351,7 +364,7 @@ if pagina == "Presupuesto":
     df["Ingreso Pago Inland"] = [ing if i >= mes_inicio_inland else 0 for i, ing in enumerate(ingreso_inland)]
     monto_pago_inland = containers_inland * precio_contenedor
     df["Monto Pago Inland"] = [m if i >= mes_inicio_inland else 0 for i, m in enumerate(monto_pago_inland)]
-
+    
     
     
     
@@ -405,6 +418,12 @@ if pagina == "Presupuesto":
     df_filtrado["Ingreso Modulo Auditoria Fletes"] = df["Ingreso Modulo Auditoria Fletes"]
     df_filtrado["Ingreso Navieras Variable"] = df["Ingreso Navieras Variable"]
     df_filtrado["Ingreso Navieras"] = df["Ingreso Navieras"]
+    df_filtrado["Monto Pagado Navieras"] = df["Monto Pagado Navieras"]
+    df_filtrado["Contenedores Pagados"] = df["Contenedores Pagados"]
+    df_filtrado["Ingreso Modulo Auditoria Fletes"] = df["Ingreso Modulo Auditoria Fletes"]
+    df_filtrado["Ingreso Navieras Variable"] = df["Ingreso Navieras Variable"]
+    df_filtrado["Ingreso Navieras"] = df["Ingreso Navieras"]
+
     df_filtrado["Monto Gateway Proveedores"] = df["Monto Gateway Proveedores"]
     df_filtrado["Ingreso Gateway Proveedores"] = df["Ingreso Gateway Proveedores"]
     df_filtrado["Monto Pago Inland"] = df["Monto Pago Inland"]
@@ -479,9 +498,10 @@ if pagina == "Presupuesto":
     # --- Pagos Navieras ---
     monto_nav = df_filtrado['Monto Pagado Navieras'].sum()
     ingreso_nav = df_filtrado['Ingreso Navieras'].sum()
-    containers_nav = monto_nav / precio_contenedor if precio_contenedor else 0
+    containers_nav = df_filtrado['Contenedores Pagados'].sum()
     margen_nav = ingreso_nav / monto_nav * 100 if monto_nav else 0
     usd_x_container_nav = ingreso_nav / containers_nav if containers_nav else 0
+
     
     # --- Gateway Proveedores ---
     monto_prov = df_filtrado['Monto Gateway Proveedores'].sum()
@@ -825,7 +845,11 @@ if pagina == "Mercado":
     cont_inland = meses_filtrados["Containers Inland"].sum()
     cont_sc = (meses_filtrados["Monto Asegurado SC"] / precio_contenedor).sum()
     cont_sca = (meses_filtrados["Monto Asegurado SCA"] / precio_contenedor).sum()
-    cont_nav = (meses_filtrados["Monto Pagado Navieras"] / flete_prom).sum()
+    monto_nav = meses_filtrados["Monto Pagado Navieras"].sum()
+    ingreso_nav = meses_filtrados["Ingreso Navieras"].sum()
+    cont_nav = monto_nav / precio_contenedor if precio_contenedor else 0
+    usd_x_container_nav = ingreso_nav / cont_nav if cont_nav else 0
+
 
     part_actual = {
         "Orquestación": cont_orq / total_container_periodo * 100,
@@ -844,7 +868,7 @@ if pagina == "Mercado":
         "Inland": 25,
         "Seguro Crédito": 4,
         "Seguro Carga": 5,
-        "Navieras": flete_prom
+        "Navieras": usd_x_container_nav
     }
 
     iconos = {
