@@ -710,7 +710,19 @@ if pagina == "Presupuesto":
         caja.append(caja[-1] + ingreso_neto[i])
     df_resumen_final.loc["Caja Acumulada"] = caja
     
-    
+    def style_table(df):
+        styles = []
+        for idx in df.index:
+            if any(idx.strip().startswith(seccion) for seccion in secciones.keys()):
+                styles.append(["background-color: #D6EAF8; font-weight: bold"] * df.shape[1])
+            elif idx.strip() == "Total Ingresos" or idx.strip() == "Total Ingresos Final":
+                styles.append(["background-color: #A9DFBF; font-weight: bold"] * df.shape[1])
+            elif idx.strip() == "Ingreso Neto":
+                styles.append(["background-color: #AED6F1; font-weight: bold"] * df.shape[1])  # Azul claro
+            else:
+                styles.append(["background-color: #f9f9f9"] * df.shape[1])
+        return pd.DataFrame(styles, index=df.index, columns=df.columns)
+
     # Mostrar tabla estilizada correctamente formateada
     df_resumen_final.index.name = "Concepto"
     df_resumen_final = df_resumen_final.reset_index()
@@ -741,7 +753,8 @@ if pagina == "Presupuesto":
     # --- EXPORTAR A EXCEL ---
     excel_buffer = io.BytesIO()
     with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
-        df_resumen.to_excel(writer, sheet_name='Resumen')
+        df_resumen_final.to_excel(writer, sheet_name='Resumen Completo')
+
     
     st.download_button(
         label="⬇️ Descargar resumen en Excel",
