@@ -126,7 +126,7 @@ if pagina == "Presupuesto":
     fecha_inicio = pd.to_datetime(fecha_inicio)
     
     # Total de periodos a proyectar (26 meses → hasta Sep-2027)
-    periodos = 26
+    periodos = 28
     fechas = [fecha_inicio + pd.DateOffset(months=i) for i in range(periodos)]
     
     
@@ -249,15 +249,19 @@ if pagina == "Presupuesto":
    
     
     # Aplicar condiciones de inicio
-    ingreso_fin = monto_fin * margen_fin
-    df["Monto Financiado"] = [m if i >= mes_inicio_fin else 0 for i, m in enumerate(monto_fin)]
-    df["Ingreso Financiamiento"] = [i if j >= mes_inicio_fin else 0 for j, i in enumerate(ingreso_fin)]
     
+    ingreso_fin = monto_fin * margen_fin
+    if mes_inicio_fin >= periodos-1:
+        df["Monto Financiado"] = [0] * periodos
+        df["Ingreso Financiamiento"] = [0] * periodos
+    else:
+        df["Monto Financiado"] = [m if i >= mes_inicio_fin else 0 for i, m in enumerate(monto_fin)]
+        df["Ingreso Financiamiento"] = [i if j >= mes_inicio_fin else 0 for j, i in enumerate(ingreso_fin)]
+
     
     # --- FX ---
     st.sidebar.header("💱 FX")    
     mes_inicio_fx = input_valor("mes_inicio_fx", "🕒 Mes inicio FX", "slider", min_value=0, max_value=periodos - 1, value=0)
-
     fx_base = st.sidebar.radio("📊 Base FX:", ["Valor inicial", "Monto financiado", "Valor orquestado", "Ambos"])
     
     spread_fx_pct = st.sidebar.number_input("🪙 Spread promedio (% sobre USD)", value=0.20, step=0.01, format="%.2f")
@@ -318,10 +322,15 @@ if pagina == "Presupuesto":
         calcular_fx(base_total)
     
     # --- Ingreso por FX ---
-    ingreso_fx = [v * spread_fx for v in vol_fx]
-    df["Volumen FX"] = vol_fx
-    df["Ingreso FX"] = ingreso_fx
-    
+    if mes_inicio_fx >= periodos - 1:
+        df["Volumen FX"] = [0] * periodos
+        df["Ingreso FX"] = [0] * periodos
+    else:
+        vol_fx = [v if i >= mes_inicio_fx else 0 for i, v in enumerate(vol_fx)]
+        ingreso_fx = [v * spread_fx for v in vol_fx]
+        df["Volumen FX"] = vol_fx
+        df["Ingreso FX"] = ingreso_fx
+
     
     
     # --- SEGURO CRÉDITO ---
@@ -338,17 +347,25 @@ if pagina == "Presupuesto":
     monto_asegurado_sc = [monto_base_sc[i] * (1 + crecimiento_sc) ** (i / 12) for i in range(periodos)]
     # Inicializa la lista con ceros
     ingreso_sc = [0.0] * periodos
-    df["Monto Asegurado SC"] = [m if i >= mes_inicio_sc else 0 for i, m in enumerate(monto_asegurado_sc)]
+    if mes_inicio_sc >= periodos - 1:
+        df["Monto Asegurado SC"] = [0] * periodos
+        df["Ingreso Seguro Crédito"] = [0] * periodos
+    else:
+        df["Monto Asegurado SC"] = [m if i >= mes_inicio_sc else 0 for i, m in enumerate(monto_asegurado_sc)]
+        
+            # Inicializa ingreso_sc
+        ingreso_sc = [0] * periodos
+        
+            # Calcula y distribuye en 12 meses
+        for i in range(mes_inicio_sc, periodos):
+            ingreso_total = monto_asegurado_sc[i] * prima_sc * comision_sc
+            cuota_mensual = ingreso_total / 12
+        
+            for j in range(i, min(i + 12, periodos)):
+                ingreso_sc[j] += cuota_mensual
+        
+        df["Ingreso Seguro Crédito"] = ingreso_sc
 
-    # Calcula y distribuye en 12 meses
-    for i in range(mes_inicio_sc, periodos):
-        ingreso_total = monto_asegurado_sc[i] * prima_sc * comision_sc
-        cuota_mensual = ingreso_total / 12
-    
-        for j in range(i, min(i + 12, periodos)):
-            ingreso_sc[j] += cuota_mensual
-    
-    df["Ingreso Seguro Crédito"] = ingreso_sc
     
     # --- SEGURO CARGA ---
     st.sidebar.header("📦 Seguro de Carga")
@@ -360,8 +377,12 @@ if pagina == "Presupuesto":
     
     monto_asegurado_sca = [valor_carga[i] * pct_aseg_sca * (1 + crecimiento_sca) ** (i / 12) for i in range(periodos)]
     ingreso_sca = [m * prima_sca * comision_sca if i >= mes_inicio_sca else 0 for i, m in enumerate(monto_asegurado_sca)]
-    df["Ingreso Seguro Carga"] = ingreso_sca
-    df["Monto Asegurado SCA"] = [m if i >= mes_inicio_sca else 0 for i, m in enumerate(monto_asegurado_sca)]
+    if mes_inicio_sca >= periodos - 1:
+        df["Monto Asegurado SCA"] = [0] * periodos
+        df["Ingreso Seguro Carga"] = [0] * periodos
+    else:
+        df["Monto Asegurado SCA"] = [m if i >= mes_inicio_sca else 0 for i, m in enumerate(monto_asegurado_sca)]
+        df["Ingreso Seguro Carga"] = ingreso_sca
 
     
     # --- PAGOS NAVIERAS ---
@@ -408,13 +429,21 @@ if pagina == "Presupuesto":
     ingreso_nav_fijo = [c * precio_suscripcion for c in clientes_activos]
     
     # Guardar en DataFrame
-    df["Clientes Activos Módulo Fletes"] = [round(c) for c in clientes_activos]
-    df["Ingreso Modulo Auditoria Fletes"] = ingreso_nav_fijo
-    
-    df["Ingreso Navieras Variable"] = ingreso_nav_var
-    df["Ingreso Navieras"] = df["Ingreso Modulo Auditoria Fletes"] + df["Ingreso Navieras Variable"]   
-    df["Monto Pagado Navieras"] = [m if i >= mes_inicio_nav else 0 for i, m in enumerate(monto_fletes)]
-    df["Contenedores Pagados"] = df["Monto Pagado Navieras"] / flete_prom
+    if mes_inicio_nav >= periodos - 1:
+        df["Clientes Activos Módulo Fletes"] = [0] * periodos
+        df["Ingreso Modulo Auditoria Fletes"] = [0] * periodos
+        df["Ingreso Navieras Variable"] = [0] * periodos
+        df["Ingreso Navieras"] = [0] * periodos
+        df["Monto Pagado Navieras"] = [0] * periodos
+        df["Contenedores Pagados"] = [0] * periodos
+    else:
+        df["Clientes Activos Módulo Fletes"] = [round(c) for c in clientes_activos]
+        df["Ingreso Modulo Auditoria Fletes"] = ingreso_nav_fijo
+        df["Ingreso Navieras Variable"] = ingreso_nav_var
+        df["Ingreso Navieras"] = df["Ingreso Modulo Auditoria Fletes"] + df["Ingreso Navieras Variable"]
+        df["Monto Pagado Navieras"] = [m if i >= mes_inicio_nav else 0 for i, m in enumerate(monto_fletes)]
+        df["Contenedores Pagados"] = df["Monto Pagado Navieras"] / flete_prom
+
         
     
     # --- GATEWAY PAGO FACTURAS DE EXPORTACIÓN ---
@@ -447,9 +476,13 @@ if pagina == "Presupuesto":
             monto_proveedor_base.append(base)
             ingreso_proveedores.append(base * spread_fx)
     
-    df["Monto Gateway Proveedores"] = monto_proveedor_base
-    df["Ingreso Gateway Proveedores"] = ingreso_proveedores
-    
+    if mes_inicio_prov >= periodos - 1:
+        df["Monto Gateway Proveedores"] = [0] * periodos
+        df["Ingreso Gateway Proveedores"] = [0] * periodos
+    else:
+        df["Monto Gateway Proveedores"] = monto_proveedor_base
+        df["Ingreso Gateway Proveedores"] = ingreso_proveedores
+
     
     
     # --- GATEWAY INLAND ---
@@ -466,11 +499,16 @@ if pagina == "Presupuesto":
     ingreso_inland = containers_inland * precio_inland
     
     # Aplicar desde mes de inicio
-    df["Containers Inland"] = containers_inland
-    df["Ingreso Pago Inland"] = [ing if i >= mes_inicio_inland else 0 for i, ing in enumerate(ingreso_inland)]
-    monto_pago_inland = containers_inland * precio_contenedor
-    df["Monto Pago Inland"] = [m if i >= mes_inicio_inland else 0 for i, m in enumerate(monto_pago_inland)]   
-    
+    if mes_inicio_inland >= periodos - 1:
+        df["Containers Inland"] = [0] * periodos
+        df["Ingreso Pago Inland"] = [0] * periodos
+        df["Monto Pago Inland"] = [0] * periodos
+    else:
+        df["Containers Inland"] = containers_inland
+        df["Ingreso Pago Inland"] = [ing if i >= mes_inicio_inland else 0 for i, ing in enumerate(ingreso_inland)]
+        monto_pago_inland = containers_inland * precio_contenedor
+        df["Monto Pago Inland"] = [m if i >= mes_inicio_inland else 0 for i, m in enumerate(monto_pago_inland)]
+
     
     
     # Asegurar tipos compatibles
