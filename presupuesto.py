@@ -1,3 +1,8 @@
+
+import os
+
+# Ruta segura para guardar escenarios
+
 # -*- coding: utf-8 -*-
 """
 Created on Wed Jul 16 19:01:20 2025
@@ -5,16 +10,111 @@ Created on Wed Jul 16 19:01:20 2025
 """
 
 import streamlit as st
+# --- INICIO BLOQUE ESCENARIOS ---
+import json
+import os
+
+ESCENARIOS_DIR = "escenarios"
+os.makedirs(ESCENARIOS_DIR, exist_ok=True)
+#st.write("DEBUG:", st.session_state.escenario)
+
+def guardar_escenario(nombre, valores):
+    with open(os.path.join(ESCENARIOS_DIR, f"{nombre}.json"), "w") as f:
+        json.dump(valores, f)
+
+def cargar_escenario(nombre):
+    try:
+        with open(os.path.join(ESCENARIOS_DIR, f"{nombre}.json"), "r") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def listar_escenarios():
+    return [f.replace(".json", "") for f in os.listdir(ESCENARIOS_DIR) if f.endswith(".json")]
+
+if "escenario" not in st.session_state:
+    st.session_state.escenario = {}
+
+st.sidebar.title("⚙️ Escenario")
+escenarios = listar_escenarios()
+esc_sel = st.sidebar.selectbox("📂 Cargar escenario", [""] + escenarios)
+if esc_sel and st.sidebar.button("📥 Cargar"):
+    escenario_cargado = cargar_escenario(esc_sel)
+    st.session_state.escenario = escenario_cargado
+
+    # 🔁 Inyectar todo al session_state
+    for clave, valor in escenario_cargado.items():
+        st.session_state[clave] = valor
+
+    st.rerun()
+
+
+
+
+st.sidebar.markdown("### 🗑️ Borrar escenario")
+escenario_a_borrar = st.sidebar.selectbox("Seleccionar escenario a eliminar", [""] + listar_escenarios())
+if st.sidebar.button("❌ Eliminar"):
+    if escenario_a_borrar:
+        ruta = os.path.join(ESCENARIOS_DIR, f"{escenario_a_borrar}.json")
+        if os.path.exists(ruta):
+            os.remove(ruta)
+            st.success(f"Escenario '{escenario_a_borrar}' eliminado correctamente")
+            st.rerun()
+        else:
+            st.warning("Escenario no encontrado")
+esc = st.session_state.escenario
+
+
+def input_valor(clave, etiqueta, tipo, **kwargs):
+    if "escenario" not in st.session_state:
+        st.session_state.escenario = {}
+
+    esc = st.session_state.escenario
+    valor_default = esc.get(clave, kwargs.get("value"))
+
+    # 🔧 Sobrescribir `value` en kwargs para evitar conflicto
+    kwargs["value"] = valor_default
+
+    if tipo == "number_input":
+        valor = st.sidebar.number_input(etiqueta, **kwargs)
+    elif tipo == "slider":
+        valor = st.sidebar.slider(etiqueta, **kwargs)
+    elif tipo == "date_input":
+        valor = st.sidebar.date_input(etiqueta, value=valor_default or datetime.date.today())
+    elif tipo == "selectbox":
+        opciones = kwargs["options"]
+        valor = st.sidebar.selectbox(etiqueta, opciones, index=opciones.index(valor_default) if valor_default in opciones else 0)
+    else:
+        valor = valor_default
+
+    esc[clave] = valor
+    return valor
+
+# --- FIN BLOQUE ESCENARIOS ---
+
 import pandas as pd
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 import io
+import json
+import os
+
+
 
 pagina = st.sidebar.radio("Selecciona una sección:", ["Presupuesto", "Mercado"])
 
-if pagina == "Presupuesto":
-  
+if pagina == "Presupuesto": 
+    
+    
+    
+    
+    # Almacén temporal donde se irán guardando los parámetros
+    if "escenario" not in st.session_state:
+        st.session_state.escenario = {}
+    
+    escenario = st.session_state.escenario
+    
     st.set_page_config(layout="wide")
     st.title("📊 Dashboard Presupuesto Proyectado")
     
@@ -118,7 +218,8 @@ if pagina == "Presupuesto":
         "Ingreso manual"
     ], index=2)  # <- index 2 selecciona por defecto "Ingreso manual"
     
-    mes_inicio_fin = st.sidebar.slider("🕒 Mes inicio financiamiento", 0, periodos - 1, 0)
+    mes_inicio_fin = input_valor("mes_inicio_fin", "🕒 Mes inicio financiamiento", "slider", min_value=0, max_value=periodos - 1, value=0)
+
     margen_fin = st.sidebar.slider("💵 Margen ganado (%)", 0.0, 2.0, 0.3) / 100
     
     if metodo_fin == "% de carga con crecimiento":
@@ -154,9 +255,9 @@ if pagina == "Presupuesto":
     
     
     # --- FX ---
-    st.sidebar.header("💱 FX")
-    
-    mes_inicio_fx = st.sidebar.slider("🕒 Mes inicio FX", 0, periodos - 1, 0)
+    st.sidebar.header("💱 FX")    
+    mes_inicio_fx = input_valor("mes_inicio_fx", "🕒 Mes inicio FX", "slider", min_value=0, max_value=periodos - 1, value=0)
+
     fx_base = st.sidebar.radio("📊 Base FX:", ["Valor inicial", "Monto financiado", "Valor orquestado", "Ambos"])
     
     spread_fx_pct = st.sidebar.number_input("🪙 Spread promedio (% sobre USD)", value=0.20, step=0.01, format="%.2f")
@@ -225,7 +326,8 @@ if pagina == "Presupuesto":
     
     # --- SEGURO CRÉDITO ---
     st.sidebar.header("🔐 Seguro de Crédito")
-    mes_inicio_sc = st.sidebar.slider("🕒 Mes inicio seguro crédito", 0, periodos - 1, 1)
+    mes_inicio_sc = input_valor("mes_inicio_sc", "🕒 Mes inicio seguro crédito", "slider", min_value=0, max_value=periodos - 1, value=1)
+
     pct_aseg_sc = st.sidebar.slider("🔒 % monto carga asegurado", 0.0, 10.0, 4.0) / 100
     prima_sc = st.sidebar.slider("💰 Prima (% del monto asegurado)", 0.3, 0.6, 0.4) / 100
     comision_sc = st.sidebar.slider("💵 Comisión ganada (%)", 0.0, 10.0, 5.0) / 100
@@ -250,7 +352,7 @@ if pagina == "Presupuesto":
     
     # --- SEGURO CARGA ---
     st.sidebar.header("📦 Seguro de Carga")
-    mes_inicio_sca = st.sidebar.slider("🕒 Mes inicio seguro carga", 0, periodos - 1, 1)
+    mes_inicio_sca = input_valor("mes_inicio_sca", "🕒 Mes inicio seguro carga", "slider", min_value=0, max_value=periodos - 1, value=1)
     pct_aseg_sca = st.sidebar.slider("📦 % carga asegurada", 0.0, 10.0, 5.0) / 100
     prima_sca = st.sidebar.slider("💰 Prima (% del valor carga)", 0.05, 0.15, 0.10) / 100
     comision_sca = st.sidebar.slider("💵 Comisión ganada (%)", 0.0, 10.0, 4.0) / 100
@@ -264,7 +366,7 @@ if pagina == "Presupuesto":
     
     # --- PAGOS NAVIERAS ---
     st.sidebar.header("🚢 Pagos a Navieras")
-    mes_inicio_nav = st.sidebar.slider("🕒 Mes inicio pagos navieras", 0, periodos - 1, 2)
+    mes_inicio_nav = input_valor("mes_inicio_nav", "🕒 Mes inicio pagos navieras", "slider", min_value=0, max_value=periodos - 1, value=2)
     pct_part_nav = st.sidebar.slider("📊 % participación sobre pagos posibles", 0.0, 30.0, 5.0) / 100
     flete_prom = st.sidebar.number_input("🚢 Monto promedio pagado Flete(USD)", value=50000.0)
     comision_nav = st.sidebar.slider("💰 Comisión sobre monto pagado (%)", 0.0, 1.5, 0.75) / 100
@@ -276,7 +378,8 @@ if pagina == "Presupuesto":
     
     # --- SUSCRIPCIÓN MÓDULO DE PAGOS ---
     st.sidebar.header("🧾 Suscripción Módulo Auditoria Fletes")
-    mes_inicio_suscripcion = st.sidebar.slider("🕒 Mes inicio suscripción módulo", 0, periodos - 1, 2)
+    mes_inicio_suscripcion = input_valor("mes_inicio_suscripcion", "🕒 Mes inicio suscripción módulo", "slider", min_value=0, max_value=periodos - 1, value=2)
+
     clientes_iniciales = st.sidebar.number_input("👥 Clientes iniciales", min_value=0, value=5)
     precio_suscripcion = st.sidebar.number_input("💵 Precio mensual por cliente (USD)", value=150.0)
     
@@ -316,7 +419,8 @@ if pagina == "Presupuesto":
     
     # --- GATEWAY PAGO FACTURAS DE EXPORTACIÓN ---
     st.sidebar.header("🏗️ Gateway Pago Facturas de Exportación")
-    mes_inicio_prov = st.sidebar.slider("🕒 Mes inicio gateway pago exportaciones", 0, periodos - 1, 3)
+    mes_inicio_prov = input_valor("mes_inicio_prov", "🕒 Mes inicio gateway pago exportaciones", "slider", min_value=0, max_value=periodos - 1, value=3)
+
     pct_prov = st.sidebar.slider("📦 % de carga orquestada que paga proveedores", 0.0, 20.0, 0.6) / 100
     pct_uso_cliente_final = st.sidebar.slider("👥 % de clientes del cliente que usan el gateway", 0.0, 100.0, 100.0) / 100
     
@@ -350,7 +454,8 @@ if pagina == "Presupuesto":
     
     # --- GATEWAY INLAND ---
     st.sidebar.header("🚚 Gateway Inland (Pago Local)")
-    mes_inicio_inland = st.sidebar.slider("🕒 Mes inicio Inland", 0, periodos - 1, 3)
+    mes_inicio_inland = input_valor("mes_inicio_inland", "🕒 Mes inicio Inland", "slider", min_value=0, max_value=periodos - 1, value=3)
+
     pct_part_inland = st.sidebar.slider("📦 % de carga que contrata Inland", 0.0, 20.0, 10.0) / 100
     precio_inland = st.sidebar.number_input("💲 Precio por contenedor Inland (USD)", value=2.0)
     
@@ -405,7 +510,7 @@ if pagina == "Presupuesto":
     df_filtrado["Monto Asegurado SCA"] = df["Monto Asegurado SCA"]
     
     
-   # monto_pagado_navieras = valor_carga * 0.10 * pct_part_nav
+# monto_pagado_navieras = valor_carga * 0.10 * pct_part_nav
     df_filtrado["Monto Pagado Navieras"] = df["Monto Pagado Navieras"]
 
     
@@ -687,15 +792,51 @@ if pagina == "Presupuesto":
     # 🔻 COSTOS, INGRESO NETO Y CAJA ACUMULADA
     # ----------------------------
     st.sidebar.subheader("💼 Parámetros Financieros Adicionales")
-    caja_inicial = st.sidebar.number_input("💰 Caja Inicial (USD)", value=0)
+    caja_inicial = input_valor("caja_inicial", "💰 Caja Inicial (USD)", "number_input", value=1273077)
+
     
-    # Entrada manual de costos por mes en sidebar
+    
+    
+    # Asegúrate que esta lista tenga los valores que deseas como valores por defecto
+    # Forzar valores del escenario en session_state si vienen del JSON
+    if "escenario" in st.session_state:
+        for key, val in st.session_state.escenario.items():
+            if key.startswith("costo_"):
+                if key not in st.session_state:
+                    st.session_state[key] = val
+
+    
     st.sidebar.markdown("### ✍️ Costos Totales por Mes")
+
     costos_totales = []
-    for col in df_resumen.columns:
-        costo_mes = st.sidebar.number_input(f"Costo {col}", min_value=0.0, value=0.0, key=f"costo_sidebar_{col}")
-        costos_totales.append(costo_mes)
     
+    df_resumen.columns = [col.strftime('%b-%y') if hasattr(col, "strftime") else str(col) for col in df_resumen.columns]
+    
+    costos_por_defecto = [
+        119180.0, 119299.0, 119418.0, 119538.0, 119657.0, 119777.0, 119897.0,
+        120017.0, 120137.0, 120257.0, 120377.0, 120497.0, 120618.0, 120738.0,
+        120859.0, 120980.0, 121101.0, 121343.0, 121586.0, 121829.0, 122012.0,
+        122195.0, 122378.0, 122562.0, 122746.0, 122930.0, 123114.0, 123299.0,
+        123484.0
+    ]
+    
+    for i, col in enumerate(df_resumen.columns):
+        clave = f"costo_{col}"
+        etiqueta = f"Costo {col}"
+        valor_default = costos_por_defecto[i] if i < len(costos_por_defecto) else 0.0
+    
+        costo = st.sidebar.number_input(
+            etiqueta,
+            key=clave,
+            value=st.session_state.get(clave, valor_default),
+            min_value=0.0,
+            step=1.0
+        )
+    
+        st.session_state.escenario[clave] = costo
+        costos_totales.append(costo)
+
+        
     # Insertar fila de Costos
     df_resumen_final.loc["Costos Totales"] = costos_totales
     
@@ -801,6 +942,38 @@ if pagina == "Presupuesto":
         ax2.set_title("Trimestral")
         ax2.tick_params(axis='x', rotation=0)
         st.pyplot(fig2)
+    col3, col4 = st.columns(2)
+
+    # ---------- Gráfico de Ingreso Neto, Costos e Ingresos ----------
+    with col3:
+        st.markdown("#### 💼 Comparativa de Ingresos, Costos e Ingreso Neto")
+        df_barras = pd.DataFrame({
+            "Total Ingresos": total_ingresos,
+            "Costos Totales": costos_totales,
+            "Ingreso Neto": ingreso_neto
+        }, index=df_resumen.columns)
+
+        fig3, ax3 = plt.subplots(figsize=(10, 5))
+        df_barras.plot(kind="bar", ax=ax3)
+        ax3.set_ylabel("USD")
+        ax3.set_title("Comparativa mensual")
+        ax3.tick_params(axis='x', rotation=45)
+        st.pyplot(fig3)
+
+    # ---------- Gráfico de Caja Acumulada ----------
+    with col4:
+        st.markdown("#### 🏦 Caja Acumulada")
+        df_caja = pd.DataFrame({
+            "Caja Acumulada": caja
+        }, index=df_resumen.columns)
+
+        fig4, ax4 = plt.subplots(figsize=(10, 5))
+        df_caja.plot(kind="bar", ax=ax4, color="#2ECC71")
+        ax4.set_ylabel("USD")
+        ax4.set_title("Evolución de Caja Acumulada")
+        ax4.tick_params(axis='x', rotation=45)
+        st.pyplot(fig4)
+   
     if pagina == "Presupuesto":   
         st.session_state.df = df
         
@@ -813,11 +986,19 @@ if pagina == "Presupuesto":
         st.session_state.fechas = fechas
         st.session_state.fechas_filtradas = fechas_filtradas
         st.session_state.df_resumen = df_resumen
-        
+        st.session_state.precio_orquestacion=precio_orquestacion
         st.session_state.precio_contenedor = precio_contenedor
         st.session_state.spread_fx = spread_fx
-        st.session_state.flete_prom = flete_prom
-
+        st.session_state.caja_inicial = caja_inicial
+        st.session_state.precio_inland = precio_inland
+        st.session_state.mes_inicio_fin = mes_inicio_fin
+        st.session_state.mes_inicio_fx = mes_inicio_fx
+        st.session_state.mes_inicio_sc= mes_inicio_sc
+        st.session_state.mes_inicio_sca = mes_inicio_sca
+        st.session_state.mes_inicio_nav = mes_inicio_nav
+        st.session_state.mes_inicio_prov = mes_inicio_prov
+        st.session_state.mes_inicio_suscripcion = mes_inicio_suscripcion
+        
 if pagina == "Mercado":
     # Validación
     variables_requeridas = ["df", "df_filtrado", "periodo_actual", "spread_fx", "precio_contenedor", "flete_prom"]
@@ -939,3 +1120,29 @@ if pagina == "Mercado":
             col2.metric("🎯 Participación deseada", f"{deseado:.3f}%")
             col3.metric("💰 Potencial ingreso extra", f"USD ${ingreso_potencial:,.0f}")
             st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+
+
+
+# --- GUARDADO DE ESCENARIO UNIFICADO Y AUTOMÁTICO ---
+st.sidebar.markdown("### 💾 Guardar Escenario")
+nombre_escenario = st.sidebar.text_input("📝 Nombre del escenario")
+
+def serializable_state(state_dict):
+    import datetime
+    result = {}
+    for k, v in state_dict.items():
+        try:
+            # Convert datetime to string
+            if isinstance(v, datetime.date):
+                result[k] = v.isoformat()
+            else:
+                json.dumps(v)
+                result[k] = v
+        except (TypeError, OverflowError):
+            pass  # Skip non-serializable entries
+    return result
+
+if st.sidebar.button("💾 Guardar Escenario") and nombre_escenario:
+    datos = serializable_state(st.session_state)
+    guardar_escenario(nombre_escenario, datos)
+    st.success(f"✅ Escenario '{nombre_escenario}' guardado exitosamente.")
