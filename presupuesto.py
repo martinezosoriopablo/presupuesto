@@ -1036,6 +1036,8 @@ if pagina == "Presupuesto":
         st.session_state.mes_inicio_nav = mes_inicio_nav
         st.session_state.mes_inicio_prov = mes_inicio_prov
         st.session_state.mes_inicio_suscripcion = mes_inicio_suscripcion
+        st.session_state.flete_prom = flete_prom
+
         
 if pagina == "Mercado":
     # Validación
